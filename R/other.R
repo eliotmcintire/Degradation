@@ -54,45 +54,27 @@ ggplot(df, aes(x = Year)) + #geom_point() +
                   ymax = FRVupper, # colour = cccoCol,
                   fill = cccoCol),
               alpha=0.25) +
+  ggplot2::theme_bw() + ylim(0, 120) + # guides() + #guides(color = guide_legend(rev(colors))) + #, fill = guide_legend(rev(colors))) + # guides(colour = "none") + #, colour = "none") +
+  labs(y = txtVEC, x = "Year", color = "", fill = NRVname, pattern = "Degradation") +
+  scale_color_manual(values = rev(colors)) +
+  scale_fill_manual(values = rev(colors)) +
+  ggtitle(LETTERS[i]) +
   geom_ribbon_pattern(aes(ymin = FRVmid, ymax = NRVmid,
                           pattern = Degradation)#, pattern_type = dueToGlobalClimate)
                       , fill = "transparent"
                       , color = "black"
-                      # , pattern_type = "circles",
-                      , pattern_fill = "red"
-                      , pattern_fill2 = "transparent"
-                      # , alpha = 0.1
-                      # pattern_angle = 45,
-                      , pattern_density = 0.25
-                      # , pattern_spacing = 0.5
+                      , pattern_fill = "black"
+                      , pattern_density = 0.1
   ) +
   geom_ribbon_pattern(aes(ymin = Actual, ymax = FRVmid,
                           pattern = ForestDegradation)#, pattern_type = dueToGlobalClimate)
                       , fill = "transparent"
                       , color = "black"
-                      # pattern_type = "hash",
-                      , pattern_fill = "yellow"
+                      , pattern_fill = "black"
                       , pattern_fill2 = "transparent"
-                      # , alpha = 0.1
                       , pattern_angle = 135,
-                      , pattern_density = 0.25
-                      # , pattern_spacing = 0.5
+                      , pattern_density = 0.1
   ) +
-  #                        pattern_density = "Due to global climate policy"),
-  # pattern_density = 0.1,
-  #                    pattern_fill = "blue",
-  #                    alpha = 0.5, # fill = "green"# , # colour = "",
-  #                    , pattern = "stripe"
-  #                    ) +
-  ggplot2::theme_bw() + ylim(0, 120) + # guides() + #guides(color = guide_legend(rev(colors))) + #, fill = guide_legend(rev(colors))) + # guides(colour = "none") + #, colour = "none") +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname, pattern = "Degradation", pattern_type = "hope") +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  # guides(pattern = guide_legend(override.aes = list(pattern = "stripe"))) +
-         # fill = guide_legend(override.aes = list(pattern = "stripe"))) +
   scale_pattern_manual(values = pat) +
-  # scale_pattern_type(values=c("striped")) +
-  # theme(legend.key.size = unit(0.5, 'cm')) +
-  # scale_pattern_discrete() +
-  ggtitle(LETTERS[i])
+  theme(legend.key.size = unit(0.95, 'cm'))
 

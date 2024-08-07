@@ -11,8 +11,8 @@ box::use(data.table[data.table, setnames, set],
          ggpattern[...])
 theSep <- " "
 
-dueToGlobalClimate <- "Degradation from global climate policy"
-dueToForestManagement <- "Degradation from forest management"
+dueToGlobalClimate <- "Global climate policy"
+dueToForestManagement <- "Forest management"
 
 yrs <- "Years"
 scn <- "scenario"
@@ -40,7 +40,8 @@ M <- 30 # increase this to get less variation; decrease to get more variation
 sdRib <- 10 # increase this to get wider confidence intervals on thick lines
 midVal <- 100
 sdNRVBounds <- 0.1
-startingDegraded <- 5
+startingDegraded <- 85
+endLowpoint <- 40
 
 NRVupper <- rnorm(N, mean = midVal + rnorm(N, mean = sdRib, 1), sd = sdNRVBounds)
 NRVlower <- rnorm(N, mean = midVal - rnorm(N, mean = sdRib, 1), sd = sdNRVBounds)
@@ -52,154 +53,116 @@ FRVupper <- rnorm(N, mean = FTrend + rnorm(N, mean = sdRib, 1), sd = sdNRVBounds
 FRVlower <- rnorm(N, mean = FTrend - rnorm(N, mean = sdRib, 1), sd = sdNRVBounds)
 FRVmid <- (FRVupper - FRVlower)/2 + FRVlower
 
-Actual <- rnorm(N, seq(midVal - startingDegraded, 50, length = N), sd = 2)
-Worse <- Actual * seq(1, 0.8, length.out = N)
+degradationConsistently <- FTrend - (midVal - startingDegraded)
+Actual1 <- rnorm(N, seq(startingDegraded, endLowpoint, length = N), sd = 2)
+Worse <- Actual1 * seq(1, 0.8, length.out = N)
 
 start <- 20
 end <- 80
 
 merge1 <- seq(0, 1, length.out = end - start)
 merge2 <- 1-merge1
-Actual2 <- rnorm(N, c(Actual[1:start],
-                      Actual[(start+1):end] * merge2 + FRVmid[(start+1):end] * merge1,
+Actual2 <- rnorm(N, c(Actual1[1:start],
+                      Actual1[(start+1):end] * merge2 + FRVmid[(start+1):end] * merge1,
                       FRVmid[(end + 1):N]), sd = 2)
 
 merge1 <- seq(0, 1, length.out = end - start)
 merge2 <- 1-merge1
-Actual3 <- rnorm(N, c(Actual[1:start],
-                      Actual[(start+1):end] * merge2 + FRVlower[(start+1):end] * merge1,
-                      FRVlower[(end + 1):N]), sd = 2)
+Actual3 <- rnorm(N, c(Actual1[1:start],
+                      Actual1[(start+1):end] * merge2 + degradationConsistently[(start+1):end] * merge1,
+                      degradationConsistently[(end + 1):N]), sd = 2)
 
 merge1 <- seq(0, 1, length.out = end - start)
 merge2 <- 1-merge1
-Actual4 <- rnorm(N, c(Actual[1:start],
-                      Actual[(start+1):end] * merge2 + Worse[(start+1):end] * merge1,
+Actual4 <- rnorm(N, c(Actual1[1:start],
+                      Actual1[(start+1):end] * merge2 + Worse[(start+1):end] * merge1,
                       Worse[(end + 1):N]), sd = 2)
 
 end <- N
 merge1 <- seq(0, 1, length.out = end - start)
 merge2 <- 1-merge1
-Actual5 <- rnorm(N, c(Actual[1:start],
-                      Actual[(start+1):end] * merge2 + NRVmid[(start+1):end] * merge1)
+Actual5 <- rnorm(N, c(Actual1[1:start],
+                      Actual1[(start+1):end] * merge2 + NRVmid[(start+1):end] * merge1)
                  # NRVmid[(end + 1):N]
                  , sd = 2)
 
+deg1lower <- Actual1
+deg1upper <- FRVlower
+
+deg2lower <- Actual2
+deg2upper <- FRVlower
+deg3lower <- Actual3
+deg3upper <- FRVlower
+deg4lower <- Actual4
+deg4upper <- FRVlower
+deg5lower <- Actual5
+deg5upper <- FRVlower
+comp5lower <- FRVupper
+comp5upper <- Actual5
+
 df <- data.frame(Year = seq_len(N) + 1999, NRVupper, NRVlower, FRVupper, FRVlower,
-                 Actual, Actual2, Actual3, Actual4, Actual5,
+                 Actual1, Actual2, Actual3, Actual4, Actual5,
                  Degradation = dueToGlobalClimate,
                  ForestDegradation = dueToForestManagement)
 
-pat <- c("circle", "circle")
+pat <- c("stripe", "circle")
 names(pat) <- c(dueToGlobalClimate, dueToForestManagement)
 
-sd
+gg2 <- function(df, sccoCol, cccoCol, cccdCol, txtVEC, NRVname, colors, i, pat, LWD, needPattern = TRUE,
+                patternCol = "dark grey", degradationStarts = "FRVlower") {
+  a <- ggplot(df, aes(x = Year)) +
+    geom_ribbon(aes(ymin = NRVlower,
+                    ymax = NRVupper, fill = sccoCol),
+                alpha=0.25) +
+    # geom_line(aes(y = NRVmid, color = sccoCol), lwd = LWD, alpha = 0.4) +
+    geom_ribbon(aes(ymin = FRVlower,
+                    ymax = FRVupper, fill = cccoCol),
+                alpha=0.25) +
+    # geom_line(aes(y = FRVmid, color = cccoCol), lwd = LWD, alpha = 0.4) +
+    ggplot2::theme_bw() + ylim(0, 120)  + guides() +
+    labs(y = txtVEC, x = "Year", color = "", fill = NRVname, pattern = "Degradation due to: ") +
+    scale_color_manual(values = rev(colors), breaks = names(colors)[3]) +
+    scale_fill_manual(values = rev(colors)) +
+    ggtitle(LETTERS[i])
+
+  if (needPattern) {
+    a <- a +
+      geom_ribbon_pattern(aes(ymin = FRVmid, ymax = NRVmid,
+                              pattern = Degradation)#, pattern_type = dueToGlobalClimate)
+                          , fill = "transparent"
+                          , pattern_fill = patternCol
+                          , pattern_colour = patternCol
+                          , pattern_density = 0.1
+      )
+
+    # compensation <- tail(df[[paste0("Actual", i)]], 1) > tail(FRVmid, 1)
+    degr <- ifelse(df[[paste0("Actual", i)]] > df[[degradationStarts]],
+                   df[[degradationStarts]], df[[paste0("Actual", i)]])
+    # comp <- ifelse(df[[paste0("Actual", i)]] < FRVmid, FRVmid, df[[paste0("Actual", i)]])
+    # fd <- df[["ForestDegradation"]]
+    a <- a + geom_ribbon_pattern(aes(ymin = degr, ymax = .data[[degradationStarts]],
+                                     pattern = ForestDegradation)
+                                 , fill = "transparent"
+                                 , pattern_colour = patternCol
+                                 , pattern_fill = patternCol
+                                 , pattern_angle = 135,
+                                 , pattern_density = 0.2) +
+      scale_pattern_manual(values = pat) +
+      geom_line(aes(y = .data[[paste0("Actual", i)]], color = cccdCol), lwd = LWD, alpha = 1) +
+      theme(legend.key.size = unit(0.95, 'cm'))
+  }
+
+  a <- a +
+    geom_line(aes(y = NRVmid, color = sccoCol), lwd = LWD, alpha = 0.4) +
+    geom_line(aes(y = FRVmid, color = cccoCol), lwd = LWD, alpha = 0.4)
+
+  a
+}
 
 ppp <- list()
-i <- 1
-ppp[[i]] <- ggplot(df, aes(x = Year)) + #geom_point() +
-  geom_line(aes(y = Actual, colour = cccdCol), lwd = LWD, alpha = 0.7) +
-  geom_ribbon(aes(ymin = NRVlower,
-                  ymax = NRVupper, #colour = sccoCol,
-                  fill = sccoCol),
-              alpha=0.25) +
-  geom_ribbon(aes(ymin = FRVlower,
-                  ymax = FRVupper, # colour = cccoCol,
-                  fill = cccoCol),
-              alpha=0.25) +
-  geom_ribbon_pattern(aes(ymin = FRVlower, ymax = NRVlower,
-                          pattern = dueToGlobalClimate)#, pattern_type = dueToGlobalClimate)
-                      , fill = "grey"
-                      # , color = "white"
-                      # pattern_type = "hash",
-                      , pattern_fill = "black"
-                      # pattern_fill2 = "blue",
-                      , alpha = 0.1
-                      # pattern_angle = 45,
-                      , pattern_density = 0.1
-                      # pattern_spacing = 0.05
-                      ) +
+for (i in 1:5)
+  ppp[[i]] <- gg2(df, sccoCol, cccoCol, cccdCol, txtVEC, NRVname, colors, i, pat, LWD)
 
-  #                        pattern_density = "Due to global climate policy"),
-                      # pattern_density = 0.1,
-  #                    pattern_fill = "blue",
-  #                    alpha = 0.5, # fill = "green"# , # colour = "",
-  #                    , pattern = "stripe"
-  #                    ) +
-  ggplot2::theme_bw() + ylim(0, 120) + # guides() + #guides(color = guide_legend(rev(colors))) + #, fill = guide_legend(rev(colors))) + # guides(colour = "none") + #, colour = "none") +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname, pattern = "Degradation", pattern_type = "hope") +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  guides(pattern = guide_legend(override.aes = list(pattern_fill = "yellow")),
-         fill = guide_legend(override.aes = list(pattern = "stripe"))) +
-  scale_pattern_manual(values = pat) +
-  # scale_pattern_type(values=c("striped")) +
-  # theme(legend.key.size = unit(1.5, 'cm')) +
-  # scale_pattern_discrete() +
-  ggtitle(LETTERS[i])
-print(ppp[[i]])
-
-i <- 2
-ppp[[i]] <- ggplot(df, aes(x = Year)) + #geom_point() +
-  geom_line(aes(y = Actual2, color = cccdCol), lwd = LWD, alpha = 0.7) +
-  geom_ribbon(aes(ymin = NRVlower,
-                  ymax = NRVupper, fill = sccoCol),
-              alpha=0.25) +
-  geom_ribbon(aes(ymin = FRVlower,
-                  ymax = FRVupper, fill = cccoCol),
-              alpha=0.25) +
-  ggplot2::theme_bw() + ylim(0, 120)  + guides() +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname) +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  ggtitle(LETTERS[i])
-
-i <- 3
-ppp[[i]] <- ggplot(df, aes(x = Year)) + #geom_point() +
-  geom_line(aes(y = Actual3, color = cccdCol), lwd = LWD, alpha = 0.7) +
-  geom_ribbon(aes(ymin = NRVlower,
-                  ymax = NRVupper, fill = sccoCol),
-              alpha=0.25) +
-  geom_ribbon(aes(ymin = FRVlower,
-                  ymax = FRVupper, fill = cccoCol),
-              alpha=0.25) +
-  ggplot2::theme_bw() + ylim(0, 120)  + guides() +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname) +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  ggtitle(LETTERS[i])
-i <- 4
-ppp[[i]] <- ggplot(df, aes(x = Year)) + #geom_point() +
-  geom_line(aes(y = Actual4, color = cccdCol), lwd = LWD, alpha = 0.7) +
-  geom_ribbon(aes(ymin = NRVlower,
-                  ymax = NRVupper, fill = sccoCol),
-              alpha=0.25) +
-  geom_ribbon(aes(ymin = FRVlower,
-                  ymax = FRVupper, fill = cccoCol),
-              alpha=0.25) +
-  ggplot2::theme_bw() + ylim(0, 120)  + guides() +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname) +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  ggtitle(LETTERS[i])
-i <- 5
-ppp[[i]] <- ggplot(df, aes(x = Year)) + #geom_point() +
-  geom_line(aes(y = Actual5, color = cccdCol), lwd = LWD, alpha = 0.7) +
-  geom_ribbon(aes(ymin = NRVlower,
-                  ymax = NRVupper, fill = sccoCol),
-              alpha=0.25) +
-  geom_ribbon(aes(ymin = FRVlower,
-                  ymax = FRVupper, fill = cccoCol),
-              alpha=0.25) +
-  ggplot2::theme_bw() + ylim(0, 120)  + guides() +
-  labs(y = txtVEC, x = "Year", color = "", fill = NRVname) +
-  scale_color_manual(values = rev(colors)) +
-  scale_fill_manual(values = rev(colors)) +
-  ggtitle(LETTERS[i])
-# print(ppp[1:3])
-
-ppp[[1]] <- ppp[[1]] +
- annotate(x = 2079, y = 90, geom = "text", label = "degradation from global climate policy", angle = c(-4)) +
- annotate(x = 2079, y = 56, geom = "text", label = "degradation from forest land management", angle = c(-9))
 
 
 design <- "
@@ -212,6 +175,9 @@ p <- ppp[[1]] + ppp[[2]] + ppp[[3]] + ppp[[4]] + ppp[[5]] +
               guides = "collect",
               axes = "collect",
               axis_titles = "collect") & # ylab(txtVEC) &
-  theme(legend.position = "bottom")
+  theme(legend.position = "right")
 print(p)
 ggsave(file.path(op, "DegradationNew.png"), width = 10, height = 8)
+
+
+
